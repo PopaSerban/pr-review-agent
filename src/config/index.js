@@ -5,7 +5,7 @@ let validatedConfig;
 try {
   validatedConfig = validateConfig();
 } catch (error) {
-  console.error('❌ Configuration Error:', error.message);
+  console.error('Configuration Error:', error.message);
   process.exit(1);
 }
 
