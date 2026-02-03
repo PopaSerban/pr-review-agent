@@ -119,9 +119,14 @@ Keep your review concise but thorough. Prioritize issues by severity.`;
     return score;
   }
 
-  buildMessages(prData, analysis) {
+  buildMessages(prData, analysis, knowledgeContext = null) {
     const systemPrompt = this.getSystemPrompt();
-    const userPrompt = this.buildReviewPrompt(prData, analysis);
+    let userPrompt = this.buildReviewPrompt(prData, analysis);
+    
+    if (knowledgeContext) {
+      userPrompt = `${knowledgeContext}\n\n---\n\n${userPrompt}`;
+      logger.debug('Added knowledge context to prompt');
+    }
     
     logger.debug('Built prompt messages for GPT');
     

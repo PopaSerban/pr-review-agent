@@ -1,6 +1,7 @@
 const githubService = require('./githubService');
 const gptService = require('./gptService');
 const promptService = require('./promptService');
+const learningService = require('./learningService');
 const logger = require('../utils/logger');
 const Review = require('../models/Review');
 
@@ -104,11 +105,13 @@ class ReviewService {
     }
   }
 
-  async generateAIReview(prData, analysis) {
+  async generateAIReview(prData, analysis, repoFullName) {
     logger.info(`Generating AI review for PR #${prData.number}`);
 
     try {
-      const messages = promptService.buildMessages(prData, analysis);
+      const knowledgeContext = await learningService.getContextForReview(repoFullName);
+      
+      const messages = promptService.buildMessages(prData, analysis, knowledgeContext);
       const response = await gptService.generateWithRetry(messages);
       const formattedReview = promptService.formatGPTResponse(response.content);
       
@@ -124,13 +127,16 @@ class ReviewService {
   async processPullRequest(owner, repo, pullNumber) {
     logger.info(`Processing PR #${pullNumber} in ${owner}/${repo}`);
 
+    const repoFullName = `${owner}/${repo}`;
     const prData = await this.fetchPullRequestData(owner, repo, pullNumber);
     const analysis = await this.analyzePullRequest(prData);
     
-    const aiReview = await this.generateAIReview(prData, analysis);
+    const aiReview = await this.generateAIReview(prData, analysis, repoFullName);
     
     const review = new Review(prData, analysis, aiReview);
     await this.postReview(owner, repo, pullNumber, review);
+
+    await learningService.learnFromPR(prData, analysis, repoFullName);
 
     return {
       prData,
