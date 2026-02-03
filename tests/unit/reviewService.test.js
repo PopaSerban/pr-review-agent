@@ -286,6 +286,61 @@ describe('ReviewService', () => {
     });
   });
 
+  describe('generateAIReview', () => {
+    it('should generate AI review successfully', async () => {
+      const prData = {
+        number: 1,
+        title: 'Test',
+        author: 'user',
+        body: '',
+        stats: { totalFiles: 1, totalAdditions: 10, totalDeletions: 0 },
+        files: []
+      };
+
+      const analysis = {
+        complexity: 'low',
+        fileTypes: ['js']
+      };
+
+      const gptService = require('../../src/services/gptService');
+      const promptService = require('../../src/services/promptService');
+
+      jest.spyOn(promptService, 'buildMessages').mockReturnValue([
+        { role: 'system', content: 'system' },
+        { role: 'user', content: 'user' }
+      ]);
+
+      jest.spyOn(gptService, 'generateWithRetry').mockResolvedValue({
+        content: 'AI review content',
+        usage: { total_tokens: 100 }
+      });
+
+      jest.spyOn(promptService, 'formatGPTResponse').mockReturnValue('Formatted review');
+
+      const result = await reviewService.generateAIReview(prData, analysis);
+
+      expect(result).toBe('Formatted review');
+      expect(gptService.generateWithRetry).toHaveBeenCalled();
+    });
+
+    it('should handle AI review generation errors', async () => {
+      const prData = {
+        number: 1,
+        stats: { totalFiles: 1 },
+        files: []
+      };
+
+      const analysis = { complexity: 'low', fileTypes: [] };
+
+      const gptService = require('../../src/services/gptService');
+      jest.spyOn(gptService, 'generateWithRetry').mockRejectedValue(new Error('API Error'));
+
+      const result = await reviewService.generateAIReview(prData, analysis);
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe('getFileTypes', () => {
     it('should extract unique file extensions', () => {
       const files = [

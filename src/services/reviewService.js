@@ -1,4 +1,6 @@
 const githubService = require('./githubService');
+const gptService = require('./gptService');
+const promptService = require('./promptService');
 const logger = require('../utils/logger');
 const Review = require('../models/Review');
 
@@ -102,19 +104,39 @@ class ReviewService {
     }
   }
 
+  async generateAIReview(prData, analysis) {
+    logger.info(`Generating AI review for PR #${prData.number}`);
+
+    try {
+      const messages = promptService.buildMessages(prData, analysis);
+      const response = await gptService.generateWithRetry(messages);
+      const formattedReview = promptService.formatGPTResponse(response.content);
+      
+      logger.info(`AI review generated successfully. Tokens used: ${response.usage.total_tokens}`);
+      
+      return formattedReview;
+    } catch (error) {
+      logger.error(`Failed to generate AI review: ${error.message}`);
+      return null;
+    }
+  }
+
   async processPullRequest(owner, repo, pullNumber) {
     logger.info(`Processing PR #${pullNumber} in ${owner}/${repo}`);
 
     const prData = await this.fetchPullRequestData(owner, repo, pullNumber);
     const analysis = await this.analyzePullRequest(prData);
     
-    const review = new Review(prData, analysis);
+    const aiReview = await this.generateAIReview(prData, analysis);
+    
+    const review = new Review(prData, analysis, aiReview);
     await this.postReview(owner, repo, pullNumber, review);
 
     return {
       prData,
       analysis,
-      review
+      review,
+      aiReview
     };
   }
 }

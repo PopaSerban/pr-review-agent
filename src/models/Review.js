@@ -1,13 +1,14 @@
 class Review {
-  constructor(prData, analysis) {
+  constructor(prData, analysis, aiReview = null) {
     this.prNumber = prData.number;
     this.repository = prData.repository || {};
     this.complexity = analysis.complexity;
-    this.summary = this.generateSummary(prData, analysis);
+    this.aiReview = aiReview;
+    this.summary = this.generateSummary(prData, analysis, aiReview);
     this.event = this.determineEvent(analysis);
   }
 
-  generateSummary(prData, analysis) {
+  generateSummary(prData, analysis, aiReview) {
     const lines = [];
     
     lines.push(`## PR Review Summary`);
@@ -37,6 +38,13 @@ class Review {
     
     if (!analysis.hasLargeFiles && !analysis.hasManyChanges) {
       lines.push('- ✅ Reasonable size for review');
+    }
+    
+    if (aiReview) {
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+      lines.push(aiReview);
     }
     
     lines.push('');
