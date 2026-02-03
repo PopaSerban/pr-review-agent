@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const reviewService = require('../services/reviewService');
 
 class WebhookController {
   async handlePullRequest(req, res, next) {
@@ -7,30 +8,25 @@ class WebhookController {
       
       logger.info(`Processing PR #${pull_request.number}: ${action} in ${repository.full_name}`);
       
-      const prData = {
-        number: pull_request.number,
-        title: pull_request.title,
-        body: pull_request.body,
-        author: pull_request.user.login,
-        headSha: pull_request.head.sha,
-        baseBranch: pull_request.base.ref,
-        headBranch: pull_request.head.ref,
-        repository: {
-          owner: repository.owner.login,
-          name: repository.name,
-          fullName: repository.full_name
-        }
-      };
-
-      logger.debug(`PR Data: ${JSON.stringify(prData, null, 2)}`);
+      const owner = repository.owner.login;
+      const repo = repository.name;
+      const pullNumber = pull_request.number;
 
       res.status(200).json({
         message: 'Webhook received and queued for processing',
-        prNumber: prData.number,
-        repository: prData.repository.fullName
+        prNumber: pullNumber,
+        repository: repository.full_name
       });
 
-      logger.info(`Successfully queued PR #${prData.number} for review`);
+      setImmediate(async () => {
+        try {
+          const result = await reviewService.processPullRequest(owner, repo, pullNumber);
+          logger.info(`Successfully processed PR #${pullNumber}: ${result.analysis.complexity} complexity`);
+        } catch (error) {
+          logger.error(`Failed to process PR #${pullNumber}: ${error.message}`);
+        }
+      });
+
     } catch (error) {
       logger.error(`Error processing webhook: ${error.message}`);
       next(error);
