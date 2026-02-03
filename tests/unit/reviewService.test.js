@@ -210,8 +210,45 @@ describe('ReviewService', () => {
     });
   });
 
+  describe('postReview', () => {
+    it('should post review to GitHub', async () => {
+      const mockReview = {
+        toGitHubReview: jest.fn().mockReturnValue({
+          body: 'Test review',
+          event: 'COMMENT'
+        })
+      };
+
+      const mockResult = { id: 123 };
+      githubService.createReview.mockResolvedValue(mockResult);
+
+      const result = await reviewService.postReview('owner', 'repo', 1, mockReview);
+
+      expect(githubService.createReview).toHaveBeenCalledWith('owner', 'repo', 1, {
+        body: 'Test review',
+        event: 'COMMENT'
+      });
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should handle post review errors', async () => {
+      const mockReview = {
+        toGitHubReview: jest.fn().mockReturnValue({
+          body: 'Test review',
+          event: 'COMMENT'
+        })
+      };
+
+      githubService.createReview.mockRejectedValue(new Error('API Error'));
+
+      await expect(
+        reviewService.postReview('owner', 'repo', 1, mockReview)
+      ).rejects.toThrow('API Error');
+    });
+  });
+
   describe('processPullRequest', () => {
-    it('should fetch and analyze PR', async () => {
+    it('should fetch, analyze, and post review', async () => {
       const mockPR = {
         number: 1,
         title: 'Test',
@@ -237,12 +274,15 @@ describe('ReviewService', () => {
       githubService.getPullRequest.mockResolvedValue(mockPR);
       githubService.getPullRequestFiles.mockResolvedValue(mockFiles);
       githubService.getPullRequestDiff.mockResolvedValue('diff');
+      githubService.createReview.mockResolvedValue({ id: 123 });
 
       const result = await reviewService.processPullRequest('owner', 'repo', 1);
 
       expect(result.prData).toBeDefined();
       expect(result.analysis).toBeDefined();
+      expect(result.review).toBeDefined();
       expect(result.analysis.complexity).toBe('low');
+      expect(githubService.createReview).toHaveBeenCalled();
     });
   });
 

@@ -1,5 +1,6 @@
 const githubService = require('./githubService');
 const logger = require('../utils/logger');
+const Review = require('../models/Review');
 
 class ReviewService {
   async fetchPullRequestData(owner, repo, pullNumber) {
@@ -86,15 +87,34 @@ class ReviewService {
     }
   }
 
+  async postReview(owner, repo, pullNumber, review) {
+    logger.info(`Posting review to PR #${pullNumber} in ${owner}/${repo}`);
+
+    try {
+      const reviewData = review.toGitHubReview();
+      const result = await githubService.createReview(owner, repo, pullNumber, reviewData);
+      
+      logger.info(`Successfully posted review to PR #${pullNumber}`);
+      return result;
+    } catch (error) {
+      logger.error(`Failed to post review: ${error.message}`);
+      throw error;
+    }
+  }
+
   async processPullRequest(owner, repo, pullNumber) {
     logger.info(`Processing PR #${pullNumber} in ${owner}/${repo}`);
 
     const prData = await this.fetchPullRequestData(owner, repo, pullNumber);
     const analysis = await this.analyzePullRequest(prData);
+    
+    const review = new Review(prData, analysis);
+    await this.postReview(owner, repo, pullNumber, review);
 
     return {
       prData,
-      analysis
+      analysis,
+      review
     };
   }
 }
