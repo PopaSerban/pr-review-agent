@@ -4,6 +4,7 @@ const express = require('express');
 const config = require('./config');
 const routes = require('./routes');
 const requestLogger = require('./middleware/logger');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -13,6 +14,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 app.use('/api', routes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 const PORT = config.server.port;
 
