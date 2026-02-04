@@ -1,13 +1,17 @@
-# PR Review Agent
+# 🤖 PR Review Agent
 
-An intelligent GitHub bot that automatically reviews pull requests using GPT-4. Provides constructive, actionable feedback on code changes.
+> An intelligent GitHub bot that automatically reviews pull requests using GPT-4, providing conversational, actionable feedback with inline code comments.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
 ## Features
 
 - 🤖 **AI-Powered Reviews**: Uses GPT-4 to analyze code and provide intelligent feedback
 - � **Conversational Tone**: Reviews written like a friendly senior dev, not a formal report
 - 📝 **Inline Code Comments**: Posts comments directly on specific lines of code
-- �🔒 **Secure**: Webhook signature verification prevents unauthorized access
+- � **Secure**: Webhook signature verification prevents unauthorized access
 - 📊 **Complexity Analysis**: Automatically assesses PR size and complexity
 - 🎯 **Smart File Selection**: Prioritizes most relevant files for review
 - 🧠 **Learning System**: Learns from your codebase patterns and conventions
@@ -385,12 +389,72 @@ Knowledge is stored in markdown files under `./knowledge/owner-repo/`
 
 ## Contributing
 
-This is a portfolio project, but suggestions are welcome!
+Contributions are welcome! Whether you want to:
+
+- 🐛 Report a bug
+- 💡 Suggest a new feature
+- 📝 Improve documentation
+- 🔧 Submit a pull request
+
+Feel free to open an issue or PR. Please read our contribution guidelines:
+
+### How to Contribute
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** and add tests if applicable
+4. **Run tests**: `npm test`
+5. **Commit your changes**: `git commit -m 'Add amazing feature'`
+6. **Push to the branch**: `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
+
+### Development Setup
+
+```bash
+# Clone your fork
+git clone https://github.com/your-username/pr-review-agent.git
+cd pr-review-agent
+
+# Install dependencies
+npm install
+
+# Copy environment template
+cp .env.example .env
+# Add your credentials to .env
+
+# Run tests
+npm test
+
+# Start development server
+npm start
+```
+
+### Code Style
+
+- Follow existing code patterns
+- Add tests for new features
+- Keep commits atomic and well-described
+- Update documentation as needed
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Author
+## Support
 
-Built as a demonstration of full-stack development, API integration, and AI/LLM usage.
+If you find this project helpful, please consider:
+
+- ⭐ Starring the repository
+- 🐛 Reporting bugs
+- 💡 Suggesting features
+- 🔀 Contributing code
+
+## Acknowledgments
+
+- Built with [OpenAI GPT-4](https://openai.com/)
+- Powered by [GitHub API](https://docs.github.com/en/rest)
+- Tunneling via [Cloudflare](https://www.cloudflare.com/)
+
+---
+
+**Made with ❤️ for the developer community**
