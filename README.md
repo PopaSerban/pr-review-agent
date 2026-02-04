@@ -5,9 +5,12 @@ An intelligent GitHub bot that automatically reviews pull requests using GPT-4. 
 ## Features
 
 - 🤖 **AI-Powered Reviews**: Uses GPT-4 to analyze code and provide intelligent feedback
-- 🔒 **Secure**: Webhook signature verification prevents unauthorized access
+- � **Conversational Tone**: Reviews written like a friendly senior dev, not a formal report
+- 📝 **Inline Code Comments**: Posts comments directly on specific lines of code
+- �🔒 **Secure**: Webhook signature verification prevents unauthorized access
 - 📊 **Complexity Analysis**: Automatically assesses PR size and complexity
 - 🎯 **Smart File Selection**: Prioritizes most relevant files for review
+- 🧠 **Learning System**: Learns from your codebase patterns and conventions
 - ⚡ **Async Processing**: Responds to webhooks immediately, processes in background
 - 🛡️ **Robust Error Handling**: Retry logic and graceful degradation
 - ✅ **Well Tested**: Comprehensive test suite with high coverage
@@ -71,32 +74,87 @@ LOG_LEVEL=info
 3. Copy to `OPENAI_API_KEY`
 
 **Webhook Secret**:
-- Generate a random string: `openssl rand -hex 32`
-- Use this in both `.env` and GitHub webhook settings
+```bash
+# Generate a secure random secret
+openssl rand -hex 32
+```
+Copy the output and use it in both `.env` (as `GITHUB_WEBHOOK_SECRET`) and GitHub webhook settings
 
 ### Running the Bot
 
 ```bash
-# Development mode (auto-reload)
-npm run dev
-
-# Production mode
+# Start the bot
 npm start
-
-# Run tests
-npm test
 ```
 
 The server will start on `http://localhost:3000`
 
+### Local Development with Cloudflare Tunnel
+
+For local testing, you need to expose your local server to the internet so GitHub can send webhooks:
+
+**1. Install Cloudflare Tunnel (cloudflared)**
+```bash
+# macOS
+brew install cloudflare/cloudflare/cloudflared
+
+# Linux
+wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i cloudflared-linux-amd64.deb
+
+# Windows
+# Download from https://github.com/cloudflare/cloudflared/releases
+```
+
+**2. Start the tunnel**
+```bash
+# In a separate terminal, run:
+cloudflared tunnel --url http://localhost:3000
+```
+
+**3. Copy the public URL**
+You'll see output like:
+```
+Your quick Tunnel has been created! Visit it at:
+https://random-words-here.trycloudflare.com
+```
+
+**Important**: Each time you restart the tunnel, you get a new random URL. You'll need to update your GitHub webhook URL accordingly.
+
+**Alternative**: For a permanent URL, create a named Cloudflare tunnel (requires free Cloudflare account)
+
 ## Setting Up GitHub Webhook
 
-1. Go to your repository → Settings → Webhooks → Add webhook
-2. **Payload URL**: `https://your-server.com/api/webhook`
+**For each repository you want to watch:**
+
+1. Go to your repository → **Settings** → **Webhooks** → **Add webhook**
+
+2. **Payload URL**: 
+   - Local dev: `https://your-tunnel-url.trycloudflare.com/api/webhook`
+   - Production: `https://your-server.com/api/webhook`
+
 3. **Content type**: `application/json`
-4. **Secret**: Use the same value as `GITHUB_WEBHOOK_SECRET`
-5. **Events**: Select "Pull requests"
-6. Save the webhook
+
+4. **Secret**: Paste your `GITHUB_WEBHOOK_SECRET` value
+
+5. **Which events would you like to trigger this webhook?**
+   - Select "Let me select individual events"
+   - ✅ Check **Pull requests** only
+   - ❌ Uncheck everything else (including "Pushes")
+
+6. **Active**: ✅ Make sure this is checked
+
+7. Click **Add webhook**
+
+**Verify it works:**
+- After adding the webhook, GitHub will send a test ping
+- Check the "Recent Deliveries" tab to see if it succeeded (green checkmark)
+- If it failed, check your bot logs and webhook URL
+
+**Testing the bot:**
+1. Create a test PR in your repository
+2. The bot should post a review within a few seconds
+3. Check bot logs for any errors
 
 ## How It Works
 
@@ -140,46 +198,35 @@ The server will start on `http://localhost:3000`
 
 ## Example Review
 
-The bot posts reviews like this:
+The bot posts conversational reviews with inline code comments:
 
+**Main Review Comment:**
 ```markdown
-## PR Review Summary
+Quick review! Overall looks solid 👍
 
-**Complexity**: low
-**Files Changed**: 3
-**Total Changes**: 50 (+30/-20)
-**File Types**: js, css
-
-### Analysis
-- ✅ Reasonable size for review
+Found an unused variable in script.js that we should clean up. The commit 
+message is clear and descriptive though, nice work!
 
 ---
 
-## AI Code Review
+📊 **Quick Stats**: 1 file, 1 change (+1/-0) • Complexity: low
 
-### Overall Assessment
-The changes look good overall. The new feature is well-implemented with proper error handling.
-
-### Specific Feedback
-
-**src/app.js**
-- Good use of async/await for API calls
-- Consider adding input validation on line 45
-- The error handling could be more specific
-
-**src/utils.js**
-- Nice helper function, very reusable
-- Consider adding JSDoc comments
-
-### Security
-No security concerns identified.
-
-### Performance
-The database queries could benefit from indexing on the user_id field.
-
----
-*Automated review by PR Review Agent*
+*🤖 Automated review by PR Review Agent*
 ```
+
+**Inline Code Comment** (posted directly on the problematic line):
+
+> **script.js:174**
+> 
+> Hey! This `notUsedVariable` isn't being used anywhere. Mind removing it to keep things clean? 🧹
+
+### Review Style
+
+- **Conversational**: Written like a friendly teammate, not a formal report
+- **Specific**: Points to exact files and line numbers
+- **Actionable**: Clear suggestions on what to fix
+- **Encouraging**: Highlights good practices too
+- **Brief**: Gets to the point quickly
 
 ## Project Structure
 
@@ -199,7 +246,10 @@ pr-review-agent/
 │   │   ├── githubService.js      # GitHub API operations
 │   │   ├── gptService.js         # OpenAI API integration
 │   │   ├── promptService.js      # Prompt engineering
-│   │   └── reviewService.js      # Review orchestration
+│   │   ├── reviewService.js      # Review orchestration
+│   │   ├── learningService.js    # Learning system orchestration
+│   │   ├── knowledgeService.js   # Knowledge storage
+│   │   └── patternExtractor.js   # Pattern extraction from PRs
 │   ├── middleware/
 │   │   ├── webhookValidator.js   # Signature verification
 │   │   ├── errorHandler.js       # Global error handling
@@ -213,6 +263,11 @@ pr-review-agent/
 │   │   ├── errors.js     # Custom error classes
 │   │   └── helpers.js    # Utility functions
 │   └── app.js            # Express app setup
+├── knowledge/            # Learned patterns per repository
+│   └── owner-repo/
+│       ├── patterns.md   # Common code patterns
+│       ├── conventions.md # Coding conventions
+│       └── domain.md     # Domain knowledge
 ├── tests/
 │   ├── unit/             # Unit tests
 │   └── integration/      # Integration tests
@@ -273,9 +328,12 @@ PORT=3000
 
 ### Webhook not triggering
 
-- Verify webhook URL is accessible from internet
-- Check webhook secret matches in both places
-- Review GitHub webhook delivery logs
+- **Check tunnel is running**: `cloudflared tunnel --url http://localhost:3000`
+- **Verify webhook URL**: Must match your current tunnel URL (changes on restart)
+- **Check webhook secret**: Must match exactly in `.env` and GitHub settings
+- **Review GitHub webhook delivery logs**: Settings → Webhooks → Recent Deliveries
+- **Check bot logs**: Look for incoming webhook events
+- **Verify events**: Only "Pull requests" should be checked in webhook settings
 
 ### Reviews not posting
 
@@ -299,6 +357,23 @@ PORT=3000
 
 - `GET /api/health` - Health check
 - `POST /api/webhook` - GitHub webhook receiver
+
+## Learning System
+
+The bot learns from your codebase over time:
+
+- **Pattern Recognition**: Identifies common code patterns and conventions
+- **Domain Knowledge**: Builds understanding of your project's domain
+- **Context-Aware Reviews**: Uses learned knowledge to provide more relevant feedback
+- **Per-Repository**: Each repo has its own knowledge base
+
+**Enable learning** in `.env`:
+```bash
+ENABLE_LEARNING=true
+KNOWLEDGE_DIR=./knowledge
+```
+
+Knowledge is stored in markdown files under `./knowledge/owner-repo/`
 
 ## Security
 
