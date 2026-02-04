@@ -90,14 +90,35 @@ class ReviewService {
     }
   }
 
-  async postReview(owner, repo, pullNumber, review) {
+  async postReview(owner, repo, pullNumber, review, commitSha) {
     logger.info(`Posting review to PR #${pullNumber} in ${owner}/${repo}`);
 
     try {
       const reviewData = review.toGitHubReview();
       const result = await githubService.createReview(owner, repo, pullNumber, reviewData);
       
-      logger.info(`Successfully posted review to PR #${pullNumber}`);
+      logger.info(`Successfully posted main review to PR #${pullNumber}`);
+      
+      // Post inline comments
+      if (review.inlineComments && review.inlineComments.length > 0) {
+        logger.info(`Posting ${review.inlineComments.length} inline comments`);
+        
+        for (const comment of review.inlineComments) {
+          try {
+            await githubService.addReviewComment(owner, repo, pullNumber, {
+              body: comment.body,
+              commit_id: commitSha,
+              path: comment.path,
+              line: comment.line,
+              side: 'RIGHT'
+            });
+            logger.debug(`Posted inline comment on ${comment.path}:${comment.line}`);
+          } catch (error) {
+            logger.warn(`Failed to post inline comment on ${comment.path}:${comment.line}: ${error.message}`);
+          }
+        }
+      }
+      
       return result;
     } catch (error) {
       logger.error(`Failed to post review: ${error.message}`);
@@ -113,11 +134,16 @@ class ReviewService {
       
       const messages = promptService.buildMessages(prData, analysis, knowledgeContext);
       const response = await gptService.generateWithRetry(messages);
+      
+      const inlineComments = promptService.parseInlineComments(response.content);
       const formattedReview = promptService.formatGPTResponse(response.content);
       
-      logger.info(`AI review generated successfully. Tokens used: ${response.usage.total_tokens}`);
+      logger.info(`AI review generated successfully. Tokens used: ${response.usage.total_tokens}, Inline comments: ${inlineComments.length}`);
       
-      return formattedReview;
+      return {
+        review: formattedReview,
+        inlineComments
+      };
     } catch (error) {
       logger.error(`Failed to generate AI review: ${error.message}`);
       return null;
@@ -131,10 +157,15 @@ class ReviewService {
     const prData = await this.fetchPullRequestData(owner, repo, pullNumber);
     const analysis = await this.analyzePullRequest(prData);
     
-    const aiReview = await this.generateAIReview(prData, analysis, repoFullName);
+    const aiResult = await this.generateAIReview(prData, analysis, repoFullName);
     
-    const review = new Review(prData, analysis, aiReview);
-    await this.postReview(owner, repo, pullNumber, review);
+    if (!aiResult) {
+      logger.error('AI review generation failed, skipping review posting');
+      return { prData, analysis, review: null, aiReview: null };
+    }
+    
+    const review = new Review(prData, analysis, aiResult.review, aiResult.inlineComments);
+    await this.postReview(owner, repo, pullNumber, review, prData.headSha);
 
     await learningService.learnFromPR(prData, analysis, repoFullName);
 
@@ -142,7 +173,7 @@ class ReviewService {
       prData,
       analysis,
       review,
-      aiReview
+      aiReview: aiResult.review
     };
   }
 }

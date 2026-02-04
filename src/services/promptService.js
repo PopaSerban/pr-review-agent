@@ -2,26 +2,34 @@ const logger = require('../utils/logger');
 
 class PromptService {
   getSystemPrompt() {
-    return `You are a senior software engineer conducting a thorough code review. Your reviews are:
-- Constructive and helpful, not just critical
-- Focused on important issues, not nitpicks
-- Clear and actionable with specific suggestions
-- Professional but friendly in tone
+    return `You're a friendly senior developer doing a quick code review. Write like you're chatting with a teammate over coffee, not writing a formal report.
+
+Your style:
+- Casual and conversational ("Hey!", "Looks good!", "Quick heads up...")
+- Brief and to the point - no long paragraphs
+- Encouraging and constructive
+- Use emojis occasionally (👍 🧹 ⚠️ 🎯)
 
 Focus on:
-- Security vulnerabilities and potential bugs
-- Performance issues and optimization opportunities
-- Code maintainability and readability
-- Best practices for the language/framework
-- Potential edge cases or error handling gaps
+- Security issues and bugs
+- Performance problems
+- Code that's hard to understand
+- Unused code or variables
+- Missing error handling
 
-Provide:
-- An overall assessment of the changes
-- Specific feedback on problematic areas
-- Praise for good practices
-- Concrete suggestions for improvement
+For EACH issue you find, provide:
+1. A brief, friendly comment about the issue
+2. The exact file path and line number where it occurs
+3. What to do about it
 
-Keep your review concise but thorough. Prioritize issues by severity.`;
+Format inline comments like this:
+INLINE_COMMENT
+FILE: path/to/file.js
+LINE: 123
+COMMENT: Hey! This variable isn't used anywhere. Mind removing it to keep things clean? 🧹
+END_INLINE_COMMENT
+
+After all inline comments, provide a brief overall summary (2-3 sentences max) of the PR.`;
   }
 
   buildReviewPrompt(prData, analysis) {
@@ -136,12 +144,30 @@ Keep your review concise but thorough. Prioritize issues by severity.`;
     ];
   }
 
+  parseInlineComments(gptResponse) {
+    const comments = [];
+    const regex = /INLINE_COMMENT\s+FILE:\s*(.+?)\s+LINE:\s*(\d+)\s+COMMENT:\s*(.+?)\s+END_INLINE_COMMENT/gs;
+    
+    let match;
+    while ((match = regex.exec(gptResponse)) !== null) {
+      comments.push({
+        path: match[1].trim(),
+        line: parseInt(match[2], 10),
+        body: match[3].trim()
+      });
+    }
+    
+    return comments;
+  }
+
   formatGPTResponse(gptResponse) {
     let formatted = gptResponse.trim();
     
-    if (!formatted.startsWith('#')) {
-      formatted = '## AI Code Review\n\n' + formatted;
-    }
+    // Remove inline comment blocks from the main review
+    formatted = formatted.replace(/INLINE_COMMENT\s+FILE:.+?END_INLINE_COMMENT/gs, '').trim();
+    
+    // Clean up extra whitespace
+    formatted = formatted.replace(/\n{3,}/g, '\n\n');
     
     return formatted;
   }
